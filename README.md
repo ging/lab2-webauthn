@@ -36,11 +36,8 @@ Para realizar la práctica, el alumno deberá tener instalado en su ordenador:
 - **Docker** y **Docker Compose** ([instalación](https://docs.docker.com/get-docker/)).
 - Los puertos **8080** y **9000** libres. Si el Keycloak del Laboratorio 1 sigue en marcha, deténgalo
   antes, ejecutando `docker compose down` en la carpeta de aquel laboratorio.
-- Un navegador basado en **Chromium** (Chrome o Edge). El autenticador virtual que se usará es una
+- Un navegador basado en **Chromium** (Chrome, Edge o, en Linux, el propio Chromium). El autenticador virtual que se usará es una
   herramienta de las DevTools de Chromium y no está disponible en Firefox ni en Safari.
-- Para el apartado 6, que es opcional: un teléfono móvil con bloqueo de pantalla y gestor de
-  passkeys (iPhone con el Llavero de iCloud activado, o Android con una cuenta de Google), Bluetooth
-  activado en el ordenador y en el teléfono, y conexión a internet en ambos.
 
 La práctica es independiente del Laboratorio 1: el entorno arranca con todo lo necesario ya creado.
 
@@ -319,7 +316,7 @@ autenticación sin contraseña, que es la recuperación de cuenta.
 
 ---
 
-## 6. Una passkey en el teléfono móvil (opcional)
+## 6. Demostración: una passkey en el teléfono móvil
 
 Hasta ahora, la passkey ha vivido en un autenticador simulado y **vinculado** a un único
 dispositivo: al borrarlo, la credencial desapareció para siempre. En la práctica, la mayoría de las
@@ -329,19 +326,24 @@ todos sus dispositivos. En este apartado se registra una segunda passkey para Di
 teléfono real, mediante el transporte que WebAuthn denomina *hybrid*: el ordenador muestra un código
 QR, el teléfono lo escanea y ambos se comunican para completar la operación.
 
-1. **Desactive el autenticador virtual.** En la pestaña **WebAuthn** de las DevTools, desmarque
-   **Enable virtual authenticator environment**. Este paso es imprescindible: mientras el entorno
-   virtual esté activo, el navegador entrega todas las operaciones de WebAuthn al autenticador
-   simulado y nunca ofrece usar el teléfono.
-2. Inicie sesión como Diego con usuario y contraseña, vaya a **Account security** → **Signing in** y
-   pulse de nuevo **Set up Passkey**.
-3. Esta vez, el diálogo del navegador (o del sistema operativo) ofrecerá guardar la passkey en otro
-   dispositivo, mediante una opción del tipo "usar un teléfono o tableta". Elíjala: aparecerá un
-   código QR.
-4. Escanee el código con la cámara del teléfono y acepte. El teléfono le pedirá desbloquearlo (con la
-   cara, la huella o el código) y guardará la passkey.
-5. En **Signing in**, compruebe qué passkeys tiene ahora registradas Diego.
-6. Cierre la sesión, pulse **Sign in with Passkey** y complete el acceso con el teléfono.
+Este apartado lo realiza el profesor en clase, proyectado en pantalla, ya que requiere un teléfono
+con passkeys y un ordenador con Bluetooth. A continuación se describe lo que se hace y lo que conviene
+observar:
+
+1. **Se desactiva el autenticador virtual**, desmarcando **Enable virtual authenticator environment**
+   en la pestaña **WebAuthn** de las DevTools. Es imprescindible: mientras el entorno virtual está
+   activo, el navegador entrega todas las operaciones de WebAuthn al autenticador simulado y nunca
+   ofrece usar el teléfono.
+2. Se inicia sesión como Diego con usuario y contraseña y, en **Account security** → **Signing in**,
+   se pulsa de nuevo **Set up Passkey**.
+3. Esta vez, el diálogo del navegador (o del sistema operativo) ofrece guardar la passkey en otro
+   dispositivo, con una opción del tipo "usar un teléfono o tableta". Al elegirla, aparece un código
+   QR.
+4. Se escanea el código con la cámara del teléfono. El teléfono pide desbloquearlo (con la cara, la
+   huella o el código) y guarda la passkey en su gestor.
+5. En **Signing in** se comprueba qué passkeys tiene ahora registradas Diego.
+6. Se cierra la sesión y se accede con **Sign in with Passkey**, completando la operación desde el
+   teléfono.
 
 > **Por debajo.** El código QR contiene los datos necesarios para que el teléfono y el ordenador
 > establezcan un canal cifrado entre ellos. El teléfono anuncia su presencia por **Bluetooth**, y el
@@ -367,11 +369,7 @@ sequenceDiagram
   T-->>O: Respuesta firmada (a través del enlace)
 ```
 
-> **Nota.** Al terminar la práctica, elimine la passkey de prueba del gestor de contraseñas del
-> teléfono (en iPhone, **Ajustes** → **Contraseñas**; en Android, el **Gestor de contraseñas de
-> Google**). Figurará asociada al dominio `localhost`.
-
-> **Pregunta.** Durante el registro, el teléfono y el ordenador han tenido que estar cerca, con el
+> **Pregunta.** En la demostración, el teléfono y el ordenador han tenido que estar cerca, con el
 > Bluetooth activado, aunque la información viaja por internet. ¿Qué tipo de ataque impide esa
 > comprobación de proximidad?
 
@@ -391,8 +389,6 @@ sequenceDiagram
   cree uno nuevo y repita el registro del apartado 3.
 - No aparece **Sign in with Passkey** ni la opción **Set up Passkey** → la política del apartado 2 no
   se ha guardado. Compruebe que **Enable Passkeys** está activado en el realm `curso`, no en `master`.
-- En el apartado 6, el navegador no ofrece usar el teléfono → el entorno virtual sigue activo
-  (desmárquelo en la pestaña **WebAuthn**) o el ordenador no tiene el Bluetooth activado.
 - `docker compose up` falla porque el puerto 8080 está ocupado → el Keycloak del Laboratorio 1 sigue
   en marcha. Deténgalo con `docker compose down` en la carpeta de aquel laboratorio.
 - Para reiniciar el entorno desde cero (se pierde la configuración y las passkeys registradas, y el
