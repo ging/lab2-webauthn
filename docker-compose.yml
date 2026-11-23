@@ -1,0 +1,31 @@
+name: lab2-webauthn
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    container_name: lab2-keycloak
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      KC_HEALTH_ENABLED: "true"
+    command:
+      - start-dev
+      - --import-realm
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./realm:/opt/keycloak/data/import:ro
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "timeout 3 bash -c 'exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n\" >&3 && cat <&3' | grep -q '200 OK'"
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+volumes:
+  keycloak_data:
