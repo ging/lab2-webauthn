@@ -158,7 +158,7 @@ realm, bajo el botón habitual figura una opción nueva, **Sign in with Passkey*
 cuenta de cada usuario aparece la posibilidad de registrar una passkey. Ambas cosas se usarán en los
 apartados siguientes.
 
-> **Pregunta.** Antes de seguir, una cuestión de intuición: ¿qué considera más seguro, una passkey
+> **Pregunta 2.1.** Antes de seguir, una cuestión de intuición: ¿qué considera más seguro, una passkey
 > sola o una contraseña acompañada de un código por SMS (es decir, dos factores)? Razone su
 > respuesta; se volverá sobre ella al final del apartado 4.
 
@@ -207,7 +207,7 @@ El esquema de este flujo es el diagrama de **Registro** de la [Descripción de l
 
 </details>
 
-> **Pregunta.** Supóngase que un atacante obtiene una copia completa de la base de datos de
+> **Pregunta 3.1.** Supóngase que un atacante obtiene una copia completa de la base de datos de
 > Keycloak. ¿Qué encontraría en ella sobre la passkey de Diego? ¿Le serviría para suplantarle? Compare
 > la situación con la de una contraseña.
 
@@ -257,10 +257,10 @@ El esquema de este flujo es el diagrama de **Inicio de sesión** de la [Descripc
 
 </details>
 
-> **Pregunta.** Supóngase que Diego recibe un correo con un enlace a una copia exacta de esta
+> **Pregunta 4.1.** Supóngase que Diego recibe un correo con un enlace a una copia exacta de esta
 > pantalla de inicio de sesión, alojada en un dominio controlado por un atacante. ¿Qué ocurriría si
 > Diego iniciara sesión allí con su contraseña? ¿Y si intentara hacerlo con su passkey? Razone la
-> respuesta a partir de lo que contiene la firma. ¿Mantiene la respuesta que dio en el apartado 2?
+> respuesta a partir de lo que contiene la firma. ¿Mantiene la respuesta que dio en la pregunta 2.1?
 
 ---
 
@@ -293,7 +293,7 @@ existiendo, y seguirá así hasta que alguien la elimine de la cuenta.
 
 </details>
 
-> **Pregunta.** ¿Qué ocurre si el usuario pierde el dispositivo que contiene la passkey? ¿Qué
+> **Pregunta 5.1.** ¿Qué ocurre si el usuario pierde el dispositivo que contiene la passkey? ¿Qué
 > alternativas existen para que no pierda el acceso a su cuenta?
 
 ---
@@ -367,13 +367,13 @@ sequenceDiagram
 
 </details>
 
-> **Pregunta.** El teléfono y el ordenador han tenido que estar cerca, con el Bluetooth activado,
+> **Pregunta 6.1.** El teléfono y el ordenador han tenido que estar cerca, con el Bluetooth activado,
 > aunque la información viaja por internet. ¿Qué tipo de ataque impide esa
 > comprobación de proximidad?
 
-> **Pregunta.** Compare la passkey del teléfono con la del autenticador virtual. ¿Dónde reside la
+> **Pregunta 6.2.** Compare la passkey del teléfono con la del autenticador virtual. ¿Dónde reside la
 > clave privada en cada caso? ¿Qué ventaja y qué riesgo tiene que una passkey se sincronice a través
-> de la nube del fabricante? Relaciónelo con la pregunta del apartado 5.
+> de la nube del fabricante? Relaciónelo con la pregunta 5.1.
 
 ---
 
