@@ -38,6 +38,8 @@ Para realizar la práctica, el alumno deberá tener instalado en su ordenador:
   antes, ejecutando `docker compose down` en la carpeta de aquel laboratorio.
 - Un navegador basado en **Chromium** (Chrome, Edge o, en Linux, el propio Chromium). El autenticador virtual que se usará es una
   herramienta de las DevTools de Chromium y no está disponible en Firefox ni en Safari.
+- Para el apartado 6: un teléfono móvil con gestor de passkeys (iPhone con el Llavero de iCloud, o
+  Android con una cuenta de Google) y un ordenador con Bluetooth.
 
 La práctica es independiente del Laboratorio 1: el entorno arranca con todo lo necesario ya creado.
 
@@ -316,34 +318,45 @@ autenticación sin contraseña, que es la recuperación de cuenta.
 
 ---
 
-## 6. Demostración: una passkey en el teléfono móvil
+## 6. Una passkey en el teléfono móvil
 
 Hasta ahora, la passkey ha vivido en un autenticador simulado y **vinculado** a un único
 dispositivo: al borrarlo, la credencial desapareció para siempre. En la práctica, la mayoría de las
 personas guardan sus passkeys en el teléfono, dentro del gestor del fabricante (el Llavero de
 iCloud en un iPhone, el Gestor de contraseñas de Google en Android), que las **sincroniza** entre
-todos sus dispositivos. En este apartado se registra una segunda passkey para Diego, esta vez en un
-teléfono real, mediante el transporte que WebAuthn denomina *hybrid*: el ordenador muestra un código
-QR, el teléfono lo escanea y ambos se comunican para completar la operación.
+todos sus dispositivos. En este apartado se registra una segunda passkey para Diego, esta vez en su
+propio teléfono, mediante el transporte que WebAuthn denomina *hybrid*: el ordenador muestra un
+código QR, el teléfono lo escanea y ambos se comunican para completar la operación.
 
-Este apartado lo realiza el profesor en clase, proyectado en pantalla, ya que requiere un teléfono
-con passkeys y un ordenador con Bluetooth. A continuación se describe lo que se hace y lo que conviene
-observar:
+Para este apartado se necesita un **teléfono con bloqueo de pantalla y gestor de passkeys** (un
+iPhone con el Llavero de iCloud activado o un Android con una cuenta de Google) y un **ordenador con
+Bluetooth activado**. Ambos deben tener conexión a internet.
 
-1. **Se desactiva el autenticador virtual**, desmarcando **Enable virtual authenticator environment**
-   en la pestaña **WebAuthn** de las DevTools. Es imprescindible: mientras el entorno virtual está
+1. **Desactive el autenticador virtual**: en la pestaña **WebAuthn** de las DevTools, desmarque
+   **Enable virtual authenticator environment**. Es imprescindible: mientras el entorno virtual está
    activo, el navegador entrega todas las operaciones de WebAuthn al autenticador simulado y nunca
    ofrece usar el teléfono.
-2. Se inicia sesión como Diego con usuario y contraseña y, en **Account security** → **Signing in**,
-   se pulsa de nuevo **Set up Passkey**.
+2. Inicie sesión como Diego con usuario y contraseña y, en **Account security** → **Signing in**,
+   pulse de nuevo **Set up Passkey**.
 3. Esta vez, el diálogo del navegador (o del sistema operativo) ofrece guardar la passkey en otro
-   dispositivo, con una opción del tipo "usar un teléfono o tableta". Al elegirla, aparece un código
-   QR.
-4. Se escanea el código con la cámara del teléfono. El teléfono pide desbloquearlo (con la cara, la
-   huella o el código) y guarda la passkey en su gestor.
-5. En **Signing in** se comprueba qué passkeys tiene ahora registradas Diego.
-6. Se cierra la sesión y se accede con **Sign in with Passkey**, completando la operación desde el
+   dispositivo, con una opción del tipo "usar un teléfono o tableta". Elíjala: aparece un código QR.
+4. Escanee el código con la cámara del teléfono. El teléfono pedirá desbloquearlo (con la cara, la
+   huella o el código) y guardará la passkey en su gestor.
+5. En **Signing in**, compruebe qué passkeys tiene ahora registradas Diego. Aparecerá también la del
+   apartado 5, cuya clave privada ya no existe: elimínela desde la propia consola.
+6. Cierre la sesión y acceda con **Sign in with Passkey**, completando la operación desde el
    teléfono.
+7. Al terminar, borre la passkey de prueba del teléfono: queda guardada en su cuenta asociada a
+   `localhost`. En un iPhone se encuentra en la app **Contraseñas** (en versiones anteriores a
+   iOS 18, en **Ajustes** → **Contraseñas**); en Android, en el **Gestor de contraseñas de Google**.
+
+> **Advertencia.** Si al pulsar **Set up Passkey** el navegador solo pide que se inserte una llave de
+> seguridad USB y no ofrece usar un teléfono, el ordenador no tiene Bluetooth disponible (es lo
+> habitual en equipos de sobremesa, y en Linux, Chromium solo ofrece el teléfono si detecta un
+> adaptador Bluetooth activo). En ese caso, realice el apartado junto a un compañero cuyo equipo sí
+> disponga de él. Tampoco sirve abrir Keycloak directamente desde el navegador del teléfono: WebAuthn
+> solo funciona en `localhost` o con HTTPS, y el teléfono accedería a través de la dirección IP del
+> ordenador.
 
 > **Por debajo.** El código QR contiene los datos necesarios para que el teléfono y el ordenador
 > establezcan un canal cifrado entre ellos. El teléfono anuncia su presencia por **Bluetooth**, y el
@@ -369,8 +382,8 @@ sequenceDiagram
   T-->>O: Respuesta firmada (a través del enlace)
 ```
 
-> **Pregunta.** En la demostración, el teléfono y el ordenador han tenido que estar cerca, con el
-> Bluetooth activado, aunque la información viaja por internet. ¿Qué tipo de ataque impide esa
+> **Pregunta.** El teléfono y el ordenador han tenido que estar cerca, con el Bluetooth activado,
+> aunque la información viaja por internet. ¿Qué tipo de ataque impide esa
 > comprobación de proximidad?
 
 > **Pregunta.** Compare la passkey del teléfono con la del autenticador virtual. ¿Dónde reside la
@@ -381,8 +394,8 @@ sequenceDiagram
 
 ## Resolución de problemas
 
-- El navegador ofrece usar el teléfono móvil mediante un código QR → el entorno virtual no está
-  activo en esa ventana. Repita el apartado 1 en la misma ventana en la que están abiertas las
+- En los apartados 1 a 5, el navegador ofrece usar el teléfono móvil mediante un código QR → el
+  entorno virtual no está activo en esa ventana. Repita el apartado 1 en la misma ventana en la que están abiertas las
   DevTools.
 - **Sign in with Passkey** no encuentra ninguna credencial → es probable que no se marcara
   **Supports resident keys** al crear el autenticador virtual. Revíselo, elimine el autenticador,
