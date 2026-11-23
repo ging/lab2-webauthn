@@ -61,31 +61,40 @@ solicita. Conviene subrayarlo, porque suele malinterpretarse: la resistencia al 
 proviene de la biometría —la huella o el rostro solo desbloquean el autenticador localmente—, sino
 de ese anclaje criptográfico al origen.
 
-El conjunto de la tecnología, estandarizado por la FIDO Alliance y el W3C, se conoce como **FIDO2** y
-se compone de dos piezas: **WebAuthn**, la interfaz del navegador, y **CTAP**, el protocolo entre el
-navegador y el autenticador físico. Las credenciales así creadas se denominan coloquialmente
-**passkeys**. Los dos flujos que se practicarán —registro e inicio de sesión— son los siguientes:
+Las credenciales así creadas se denominan **passkeys**. En la práctica se recorren dos flujos: el
+registro de la passkey y el inicio de sesión con ella.
+
+**Registro.** El autenticador genera el par de claves y entrega la pública a Keycloak:
 
 ```mermaid
 sequenceDiagram
   participant N as "Navegador + autenticador virtual"
   participant K as "Keycloak"
-  Note over N,K: Registro
   N->>K: Solicitud de registro
   K-->>N: Reto aleatorio (challenge)
   N->>N: Genera par de claves (la privada no sale)
   N->>K: Clave publica + firma del reto
-  Note over N,K: Inicio de sesion
+```
+
+**Inicio de sesión.** El autenticador firma un reto nuevo y Keycloak lo verifica con la pública.
+A partir de ahí todo sigue como con una contraseña: Keycloak abre la sesión y entrega los tokens a
+la aplicación. La passkey solo sustituye la forma de demostrar la identidad:
+
+```mermaid
+sequenceDiagram
+  participant N as "Navegador + autenticador virtual"
+  participant K as "Keycloak"
   K-->>N: Reto nuevo
   N->>N: Firma con la clave privada (incluye el origen)
   N->>K: Firma
   K->>K: Verifica con la clave publica
+  K-->>N: Sesion iniciada y tokens, como en cualquier login
 ```
 
 Queda una dificultad práctica: probar passkeys requiere un autenticador (un sensor de huella, un
 chip del dispositivo o una llave física), y no todos los equipos disponen de uno. Para que la
 práctica sea reproducible en cualquier ordenador, se utilizará el **autenticador virtual** que
-incorporan las DevTools de Chromium, que emula por software un dispositivo FIDO2 real.
+incorporan las DevTools de Chromium, que emula por software un autenticador real.
 
 ---
 
@@ -149,24 +158,6 @@ realm, bajo el botón habitual figura una opción nueva, **Sign in with Passkey*
 cuenta de cada usuario aparece la posibilidad de registrar una passkey. Ambas cosas se usarán en los
 apartados siguientes.
 
-> **Por debajo.** Cada campo de esta pantalla es un parámetro que Keycloak entregará al navegador
-> cuando pida crear una passkey, mediante la función `navigator.credentials.create` de la API
-> WebAuthn:
->
-> - **Discoverable credential** → `residentKey`: si la credencial debe guardar a qué usuario
->   pertenece.
-> - **User verification requirement** → `userVerification`: si el autenticador debe verificar a la
->   persona (con un PIN o con biometría) o basta con que alguien lo toque.
-> - **Relying party ID** → `rp.id`: el dominio al que quedará ligada la passkey. Vacío significa "el
->   dominio desde el que se accede", aquí `localhost`.
-> - **Signature algorithms** → los algoritmos de firma que el servidor acepta (`ES256`, `RS256`).
-> - **Authenticator Attachment** → `authenticatorAttachment`: si se admite solo un autenticador
->   integrado en el dispositivo (`platform`), solo uno externo, como una llave USB
->   (`cross-platform`), o cualquiera.
->
-> Es decir, la política no es una casilla de "activar passkeys" sin más: es la lista de exigencias
-> que el servidor impone a cualquier autenticador que quiera registrarse.
-
 > **Pregunta.** Antes de seguir, una cuestión de intuición: ¿qué considera más seguro, una passkey
 > sola o una contraseña acompañada de un código por SMS (es decir, dos factores)? Razone su
 > respuesta; se volverá sobre ella al final del apartado 4.
@@ -192,44 +183,40 @@ Esa credencial que aparece en el panel es la evidencia visual del concepto centr
 La clave **privada reside dentro del autenticador** —no en Keycloak, que solo guarda la pública— y
 está ligada a este dominio concreto: no serviría en ningún otro sitio.
 
-> **Por debajo.** Al pulsar **Set up Passkey** ocurre lo siguiente:
->
-> 1. Keycloak genera un **reto** (*challenge*) aleatorio y llama a `navigator.credentials.create`
->    con ese reto, el dominio (`rp.id`), un identificador de Diego y las exigencias de la política.
-> 2. El autenticador comprueba la presencia y la identidad de la persona, genera un **par de
->    claves** nuevo para `localhost` y guarda la privada junto con el identificador de Diego.
-> 3. El navegador devuelve a Keycloak dos estructuras. El **`clientDataJSON`** contiene el reto y el
->    **origen** de la página (`http://localhost:8080`), añadido por el propio navegador. El
->    **`authenticatorData`** contiene un resumen (*hash*) del dominio, unos indicadores
->    (*flags*: **UP**, la persona estaba presente; **UV**, fue verificada; **BE** y **BS**, la
->    credencial puede sincronizarse y está sincronizada), el **contador** de firmas, el identificador
->    de la credencial y la **clave pública**.
-> 4. Keycloak comprueba que el reto es el suyo, que el origen y el dominio son los esperados y que los
->    indicadores cumplen la política. Solo entonces **guarda el identificador de la credencial, la
->    clave pública y el contador**. Nada más.
+<details>
+<summary><strong>En detalle (opcional):</strong> qué ocurre al registrar la passkey. No es necesario
+para continuar.</summary>
 
-```mermaid
-sequenceDiagram
-  participant K as Keycloak
-  participant N as Navegador
-  participant A as Autenticador
-  K->>N: Reto + dominio + usuario + exigencias de la política
-  N->>N: Construye el clientDataJSON (reto + origen)
-  N->>A: create (dominio, usuario, resumen del clientDataJSON)
-  A->>A: Verifica a la persona (UV)
-  A->>A: Genera el par de claves y guarda la privada
-  A-->>N: authenticatorData (flags, contador, clave pública)
-  N-->>K: clientDataJSON + authenticatorData
-  K->>K: Comprueba reto, origen, dominio y flags
-  K->>K: Guarda el ID, la clave pública y el contador
-```
+Al pulsar **Set up Passkey** ocurre lo siguiente:
+
+1. Keycloak genera un **reto** (*challenge*) aleatorio y llama a `navigator.credentials.create`
+   con ese reto, el dominio (`rp.id`), un identificador de Diego y las exigencias de la política.
+2. El autenticador comprueba la presencia y la identidad de la persona, genera un **par de
+   claves** nuevo para `localhost` y guarda la privada junto con el identificador de Diego.
+3. El navegador devuelve a Keycloak dos estructuras. El **`clientDataJSON`** contiene el reto y el
+   **origen** de la página (`http://localhost:8080`), añadido por el propio navegador. El
+   **`authenticatorData`** contiene un resumen (*hash*) del dominio, unos indicadores
+   (*flags*: **UP**, la persona estaba presente; **UV**, fue verificada; **BE** y **BS**, la
+   credencial puede sincronizarse y está sincronizada), el **contador** de firmas, el identificador
+   de la credencial y la **clave pública**.
+4. Keycloak comprueba que el reto es el suyo, que el origen y el dominio son los esperados y que los
+   indicadores cumplen la política. Solo entonces **guarda el identificador de la credencial, la
+   clave pública y el contador**. Nada más.
+
+El esquema de este flujo es el diagrama de **Registro** de la [Descripción de la práctica](#descripción-de-la-práctica).
+
+</details>
 
 > **Pregunta.** Supóngase que un atacante obtiene una copia completa de la base de datos de
 > Keycloak. ¿Qué encontraría en ella sobre la passkey de Diego? ¿Le serviría para suplantarle? Compare
 > la situación con la de una contraseña.
 
-> **Pregunta.** El panel muestra un contador de firmas. ¿Para qué puede servirle al servidor
-> conocer ese contador?
+> **Dato curioso.** El contador de firmas que muestra el panel sirve para detectar clones. El
+> autenticador lo incrementa cada vez que firma, y el servidor guarda el último valor recibido. Si
+> llega una firma con un contador igual o inferior al almacenado, es señal de que la clave privada
+> podría haberse **clonado**: dos autenticadores estarían usando la misma clave, cada uno con su
+> propio contador. Eso sí, muchas passkeys sincronizadas en el móvil envían siempre el valor 0, así
+> que el contador es una señal útil, pero no una garantía.
 
 ---
 
@@ -247,41 +234,28 @@ Comprobado el registro, se verifica que el acceso funciona ya sin contraseña:
 Keycloak ha sabido quién era el usuario sin que nadie lo tecleara: se lo ha indicado el propio
 autenticador, gracias a que la credencial es descubrible.
 
-> **Por debajo.** Al pulsar **Sign in with Passkey**, Keycloak genera un reto nuevo y llama a
-> `navigator.credentials.get` **sin indicar ningún usuario**. El autenticador busca una credencial
-> para `localhost`, verifica a la persona y **firma** el reto junto con los datos de la operación.
-> Con la firma devuelve el identificador de usuario que guardó en el registro: así sabe Keycloak que
-> se trata de Diego. Antes de aceptar, Keycloak hace cuatro comprobaciones:
->
-> 1. **Reto:** es el mismo que acaba de generar, de modo que la respuesta no es una repetición de
->    otra anterior.
-> 2. **Origen y dominio:** el `clientDataJSON` dice `http://localhost:8080` y el resumen del dominio
->    corresponde a `localhost`.
-> 3. **Verificación de usuario:** el indicador **UV** está activo, como exige la política.
-> 4. **Firma:** es válida con la clave pública guardada en el registro.
->
-> Además, comprueba que el **contador** ha avanzado respecto al último valor conocido.
+<details>
+<summary><strong>En detalle (opcional):</strong> qué comprueba Keycloak al iniciar sesión. No es
+necesario para continuar.</summary>
 
-```mermaid
-sequenceDiagram
-  participant K as Keycloak
-  participant N as Navegador
-  participant A as Autenticador
-  K->>N: Reto nuevo, sin indicar usuario
-  N->>N: Construye el clientDataJSON (reto + origen)
-  N->>A: get (dominio, resumen del clientDataJSON)
-  A->>A: Busca una credencial de localhost y verifica a la persona
-  A->>A: Firma el authenticatorData y el resumen del clientDataJSON
-  A-->>N: Firma + authenticatorData + identificador de usuario
-  N-->>K: Firma + clientDataJSON + authenticatorData + usuario
-  K->>K: 1 reto, 2 origen y dominio, 3 UV, 4 firma con la clave pública
-  K->>K: Contador mayor que el anterior, acceso concedido
-```
+Al pulsar **Sign in with Passkey**, Keycloak genera un reto nuevo y llama a
+`navigator.credentials.get` **sin indicar ningún usuario**. El autenticador busca una credencial
+para `localhost`, verifica a la persona y **firma** el reto junto con los datos de la operación.
+Con la firma devuelve el identificador de usuario que guardó en el registro: así sabe Keycloak que
+se trata de Diego. Antes de aceptar, Keycloak hace cuatro comprobaciones:
 
-> **Pregunta.** Acaba de iniciar sesión sin escribir ni el usuario ni la contraseña. ¿En qué se
-> diferencia esto de un doble factor de autenticación (2FA), en el que primero se teclea la
-> contraseña y después se introduce un código? Relaciónelo con las dos políticas que ofrecía Keycloak
-> en el apartado 2: **WebAuthn Policy** y **WebAuthn Passwordless Policy**.
+1. **Reto:** es el mismo que acaba de generar, de modo que la respuesta no es una repetición de
+   otra anterior.
+2. **Origen y dominio:** el `clientDataJSON` dice `http://localhost:8080` y el resumen del dominio
+   corresponde a `localhost`.
+3. **Verificación de usuario:** el indicador **UV** está activo, como exige la política.
+4. **Firma:** es válida con la clave pública guardada en el registro.
+
+Además, comprueba que el **contador** ha avanzado respecto al último valor conocido.
+
+El esquema de este flujo es el diagrama de **Inicio de sesión** de la [Descripción de la práctica](#descripción-de-la-práctica).
+
+</details>
 
 > **Pregunta.** Supóngase que Diego recibe un correo con un enlace a una copia exacta de esta
 > pantalla de inicio de sesión, alojada en un dominio controlado por un atacante. ¿Qué ocurriría si
@@ -308,10 +282,16 @@ contraseña siga vigente. Y Keycloak no tiene forma de saber que la clave privad
 para el servidor, la credencial sigue existiendo. Esto conecta con el problema más delicado de la
 autenticación sin contraseña, que es la recuperación de cuenta.
 
-> **Por debajo.** En WebAuthn la comunicación siempre la inicia el servidor: el autenticador solo
-> habla cuando se le pide crear una credencial o firmar un reto. No existe ningún mensaje con el que
-> el autenticador avise de que ha perdido o borrado una clave. Por eso, para Keycloak, la credencial
-> de Diego sigue existiendo, y seguirá así hasta que alguien la elimine de la cuenta.
+<details>
+<summary><strong>En detalle (opcional):</strong> por qué Keycloak no se entera. No es necesario
+para continuar.</summary>
+
+En WebAuthn la comunicación siempre la inicia el servidor: el autenticador solo habla cuando se le
+pide crear una credencial o firmar un reto. No existe ningún mensaje con el que el autenticador
+avise de que ha perdido o borrado una clave. Por eso, para Keycloak, la credencial de Diego sigue
+existiendo, y seguirá así hasta que alguien la elimine de la cuenta.
+
+</details>
 
 > **Pregunta.** ¿Qué ocurre si el usuario pierde el dispositivo que contiene la passkey? ¿Qué
 > alternativas existen para que no pierda el acceso a su cuenta?
@@ -358,13 +338,16 @@ Bluetooth activado**. Ambos deben tener conexión a internet.
 > solo funciona en `localhost` o con HTTPS, y el teléfono accedería a través de la dirección IP del
 > ordenador.
 
-> **Por debajo.** El código QR contiene los datos necesarios para que el teléfono y el ordenador
-> establezcan un canal cifrado entre ellos. El teléfono anuncia su presencia por **Bluetooth**, y el
-> ordenador solo continúa si lo detecta cerca. Los datos de la operación viajan después, cifrados,
-> por un servicio de enlace en internet del fabricante. Para Keycloak, el resultado es una passkey
-> como cualquier otra, con una diferencia visible en el `authenticatorData`: los indicadores **BE**
-> y **BS** aparecen activos (la credencial es sincronizable y está sincronizada), y el contador
-> suele valer siempre 0.
+<details>
+<summary><strong>En detalle (opcional):</strong> cómo se comunican el teléfono y el ordenador. No es
+necesario para continuar.</summary>
+
+El código QR contiene los datos necesarios para que el teléfono y el ordenador establezcan un canal
+cifrado entre ellos. El teléfono anuncia su presencia por **Bluetooth**, y el ordenador solo
+continúa si lo detecta cerca. Los datos de la operación viajan después, cifrados, por un servicio
+de enlace en internet del fabricante. Para Keycloak, el resultado es una passkey como cualquier
+otra, con una diferencia visible en el `authenticatorData`: los indicadores **BE** y **BS** aparecen
+activos (la credencial es sincronizable y está sincronizada), y el contador suele valer siempre 0.
 
 ```mermaid
 sequenceDiagram
@@ -381,6 +364,8 @@ sequenceDiagram
   T->>T: Desbloqueo (cara, huella o código) y firma
   T-->>O: Respuesta firmada (a través del enlace)
 ```
+
+</details>
 
 > **Pregunta.** El teléfono y el ordenador han tenido que estar cerca, con el Bluetooth activado,
 > aunque la información viaja por internet. ¿Qué tipo de ataque impide esa
